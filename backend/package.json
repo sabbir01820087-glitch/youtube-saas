@@ -1,0 +1,3 @@
+cd youtube-saas/backend
+npm init -y
+npm install express mongoose axios dotenv socket.io node-cron cors
