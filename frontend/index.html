@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>YouTube SEO Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="/socket.io/socket.io.js"></script>
+</head>
+<body>
+
+<h1>YouTube SEO Dashboard</h1>
+
+<!-- Generate SEO -->
+<input type="text" id="title" placeholder="Enter video title">
+<button onclick="generate()">Generate SEO</button>
+<pre id="result"></pre>
+<button onclick="copyResult()">Copy</button>
+
+<!-- Chart -->
+<canvas id="rankChart" width="600" height="300"></canvas>
+
+<!-- Channel analytics -->
+<input type="text" id="channelId" placeholder="Enter channel ID">
+<button onclick="fetchChannel()">Check Channel</button>
+<pre id="channelResult"></pre>
+<canvas id="channelChart" width="600" height="300"></canvas>
+
+<script>
+const socket = io();
+let chart = null;
+let currentId = null;
+
+async function generate(){
+  const title=document.getElementById("title").value;
+  const res=await fetch("/generate",{method:"POST",headers:{'Content-Type':'application/json'},body:JSON.stringify({title})});
+  const data=await res.json();
+  document.getElementById("result").innerText=data.seoContent;
+  currentId=data.id;
+  fetchRank(currentId);
+}
+
+function copyResult(){
+  navigator.clipboard.writeText(document.getElementById("result").innerText);
+  alert("Copied!");
+}
+
+async function fetchRank(id){
+  const res=await fetch("/rank/"+id);
+  const data=await res.json();
+  renderChart(data);
+}
+
+function renderChart(rankData){
+  const ctx=document.getElementById("rankChart").getContext("2d");
+  const labels=rankData.map(d=>new Date(d.date).toLocaleTimeString());
+  const values=rankData.map(d=>d.rank);
+
+  if(chart){
+    chart.data.labels=labels;
+    chart.data.datasets[0].data=values;
+    chart.update();
+  } else {
+    chart=new Chart(ctx,{type:'line',data:{labels:labels,datasets:[{label:'Keyword Rank',data:values,borderColor:'red',fill:false}]},options:{scales:{y:{reverse:true,min:1,max:10}}}});
+  }
+}
+
+// Channel analytics
+async function fetchChannel(){
+  const channelId=document.getElementById("channelId").value;
+  const res=await fetch("/channel",{method:"POST",headers:{'Content-Type':'application/json'},body:JSON.stringify({channelId})});
+  const data=await res.json();
+  document.getElementById("channelResult").innerText=`Title: ${data.title}\nSubscribers: ${data.analyticsHistory[0].subscribers}\nViews: ${data.analyticsHistory[0].views}\nVideos: ${data.analyticsHistory[0].videos}`;
+}
+</script>
+
+</body>
+</html>
